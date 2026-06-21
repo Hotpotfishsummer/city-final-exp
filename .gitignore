@@ -1,0 +1,50 @@
+# ============================================
+# final-exp 期末大作业 · Git 忽略规则
+# ============================================
+
+# ---------- Python 缓存 ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ---------- Jupyter 临时 ----------
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+*.bak
+
+# ---------- IDE / 编辑器 ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Office 临时锁文件 ----------
+~$*
+*.tmp
+
+# ---------- Streamlit 缓存 ----------
+.streamlit/secrets.toml
+.streamlit/credentials.toml
+
+# ============================================
+# 重要:这里 _不_ 忽略 data/ 目录,
+# 因为 streets_24h_core.geojson 是同学核心数据资产,
+# 仓库携带可让其他同学/评审者直接 clone 跑通大屏。
+# ============================================
+
+# ---------- output/ 重新生成 ----------
+# output/ 是 ipynb 阶段②③ 重新跑出来的产物,体积大(1.3MB geojson)且可复现
+# 默认不 commit;如果想共享产物,可在提交时手动 `git add -f output/street_hour_*.geojson`
+output/
+
+# ---------- 大型临时文件 / 数据集 ----------
+*.geojson.bak
+*.csv.bak
+*.tif.aux.xml
