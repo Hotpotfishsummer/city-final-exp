@@ -14,7 +14,7 @@
 
 ```text
 .
-├── app.py                     # Streamlit 可视化大屏入口
+├── app_new.py                 # Streamlit 大屏主入口 (OpenAI 兼容大模型 RAG)
 ├── 01_data_audit.ipynb        # 数据可用性体检
 ├── 02_od_to_street_flow.ipynb # OD 到街道小时流量聚合
 ├── 03_tidal_analysis.ipynb    # 潮汐聚类、接力网络与 POI 相关分析
@@ -85,8 +85,10 @@ pip install streamlit folium streamlit-folium scikit-learn scipy
 在项目根目录运行：
 
 ```bash
-streamlit run app.py
+streamlit run app_new.py
 ```
+
+- `app_new.py`：主入口，含 AI 城市决策舱（OpenAI 兼容大模型 RAG，支持交通安保 / 城市规划双角色）。
 
 启动后可在浏览器中查看：
 
@@ -94,6 +96,42 @@ streamlit run app.py
 - 起点流量、终点流量、净流入视角切换
 - 核心 28 街道与全市 74 街道覆盖范围切换
 - 潮汐类型、POI 相关性与热点接力分析
+- AI 助手：点击地图街道联动高亮、专家身份切换、决策报告流式输出
+
+### 3. 配置大模型
+
+AI 决策舱使用 **OpenAI 兼容 Chat Completions 协议**，可以对接任何兼容该协议的服务（OpenAI 官方、DeepSeek、智谱 GLM、Qwen DashScope、Moonshot、本地 Ollama / vLLM 等）。
+
+**方式 ①：Streamlit secrets（推荐）**
+
+在项目根目录新建 `.streamlit/secrets.toml`：
+
+```toml
+OPENAI_API_KEY  = "sk-xxx"
+OPENAI_BASE_URL = ""                 # 留空 = OpenAI 官方
+OPENAI_MODEL    = "gpt-4o-mini"      # 任意 OpenAI 兼容模型名
+```
+
+**方式 ②：环境变量**
+
+```bash
+export OPENAI_API_KEY="sk-xxx"
+export OPENAI_BASE_URL="https://api.deepseek.com/v1"
+export OPENAI_MODEL="deepseek-chat"
+```
+
+**常用服务参考**
+
+| 提供方 | `OPENAI_BASE_URL` | `OPENAI_MODEL` 例子 |
+|---|---|---|
+| OpenAI 官方 | （留空） | `gpt-4o-mini` / `gpt-4o` |
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
+| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4/` | `glm-4-flash` |
+| Qwen DashScope | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
+| Moonshot | `https://api.moonshot.cn/v1` | `moonshot-v1-8k` |
+| Ollama（本地） | `http://localhost:11434/v1` | `llama3` / `qwen2` |
+
+配置完成后重启 Streamlit，侧边栏底部的「🤖 AI 模型状态」会显示当前生效的模型、网关与 Key 掩码。未配置时 AI 决策舱按钮会提示错误。
 
 ## 输出结果
 

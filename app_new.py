@@ -2,7 +2,7 @@
 ================================================================================
 深圳市核心商圈 24h 出行潮汐与热点演化大屏 (城市空间计算与大模型决策集成系统)
 ================================================================================
-- 启动入口: `streamlit run app.py`
+- 启动入口: `streamlit run app_new.py`(本文件)
 - 项目定位: 深圳技术大学《城市多模态数据与大模型应用》期末大作业核心系统
 - 系统闭环: 空间多源计算感知 ──► 时空潮汐特征演化 ──► LLM时空语义诊断 (DeepSeek RAG)
 
@@ -40,10 +40,31 @@ from openai import OpenAI
 from shapely.geometry import Point
 
 # ============================================================
-# API Key 动态调用对齐 
+# 0. 大模型配置 (OpenAI 兼容协议,可对接任意兼容 Chat Completions 的服务)
 # ============================================================
-API_KEY = ""
-BASE_URL = ""
+# 配置方式 (按优先级):
+#   1. Streamlit secrets: 在 .streamlit/secrets.toml 写入
+#        OPENAI_API_KEY  = "sk-xxx"
+#        OPENAI_BASE_URL = ""                   # 留空 = 走 OpenAI 官方
+#        OPENAI_MODEL    = "gpt-4o-mini"        # 任意 OpenAI 兼容模型名
+#   2. 环境变量: export OPENAI_API_KEY=sk-xxx ...
+#   3. 直接修改下方 DEFAULT_* 常量
+DEFAULT_API_KEY  = ""
+DEFAULT_BASE_URL = ""                  # 留空 = 走 OpenAI 官方
+DEFAULT_MODEL    = "gpt-4o-mini"       # OpenAI 兼容格式的模型名
+
+def _get_config(key: str, default: str) -> str:
+    """优先从 st.secrets 读,再读环境变量,最后用 default。"""
+    try:
+        if hasattr(st, "secrets") and key in st.secrets:
+            return str(st.secrets[key])
+    except Exception:
+        pass
+    return os.environ.get(key, default)
+
+API_KEY  = _get_config("OPENAI_API_KEY",  DEFAULT_API_KEY)
+BASE_URL = _get_config("OPENAI_BASE_URL", DEFAULT_BASE_URL)
+MODEL    = _get_config("OPENAI_MODEL",    DEFAULT_MODEL)
 
 
 # ============================================================
@@ -184,6 +205,23 @@ except Exception:
     n_anom = "—"
 st.sidebar.metric("异常高流量街道", n_anom,
                   help="24h 峰值 z-score > 1.5 的街道数")
+
+# AI 模型状态 (OpenAI 兼容配置:从 st.secrets / 环境变量读取)
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🤖 AI 模型状态")
+if API_KEY:
+    _mask = (API_KEY[:4] + "***" + API_KEY[-2:]) if len(API_KEY) > 8 else API_KEY
+    st.sidebar.markdown(
+        f"- ✅ **已配置**  \n"
+        f"- 模型: `{MODEL}`  \n"
+        f"- 网关: `{'OpenAI 官方' if not BASE_URL else BASE_URL}`  \n"
+        f"- Key: `{_mask}`"
+    )
+else:
+    st.sidebar.warning(
+        "未配置 `OPENAI_API_KEY`,AI 决策舱将不可用。\n\n"
+        "在 `.streamlit/secrets.toml` 写入或设置同名环境变量后重启。"
+    )
 
 # ============================================================
 # 3. 数据过滤
@@ -439,11 +477,24 @@ def build_ai_system_prompt(role: str, context: dict) -> str:
         )
 
 def stream_ai_response(role: str, user_message: str, context: dict):
-    if not API_KEY or not BASE_URL:
-        yield "⚠️ 当前 API Key 未配置，无法调用大模型。\n\n"
+    if not API_KEY:
+        yield (
+            "⚠️ 未配置 OPENAI_API_KEY,无法调用大模型。\n\n"
+            "配置方式 (任选其一):\n"
+            "  • `.streamlit/secrets.toml`:\n"
+            "      OPENAI_API_KEY  = 'sk-xxx'\n"
+            "      OPENAI_BASE_URL = ''  # 留空走 OpenAI 官方\n"
+            "      OPENAI_MODEL    = 'gpt-4o-mini'\n"
+            "  • 环境变量: export OPENAI_API_KEY=sk-xxx ...\n"
+            "修改后请重启 Streamlit。\n"
+        )
         return
     try:
-        client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+        # OpenAI 兼容协议: base_url 留空走官方,非空指向第三方网关
+        client_kwargs = {"api_key": API_KEY}
+        if BASE_URL:
+            client_kwargs["base_url"] = BASE_URL
+        client = OpenAI(**client_kwargs)
         sys_prompt = build_ai_system_prompt(role, context)
         messages = [
             {"role": "system", "content": sys_prompt},
@@ -455,7 +506,7 @@ def stream_ai_response(role: str, user_message: str, context: dict):
                 messages.insert(-1, msg)
 
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model=MODEL,
             messages=messages,
             stream=True,
             temperature=0.7,
@@ -465,7 +516,7 @@ def stream_ai_response(role: str, user_message: str, context: dict):
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
     except Exception as e:
-        yield f"⚠️ 大模型调用出错：{str(e)}"
+        yield f"⚠️ 大模型调用出错:{str(e)}\n\n当前配置: MODEL={MODEL!r}, BASE_URL={BASE_URL or '<OpenAI 官方>'!r}"
 
 # ============================================================
 # 4.7 注入全局 CSS（修复全局选择器污染 Bug）

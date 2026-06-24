@@ -15,6 +15,9 @@ profile_default/
 ipython_config.py
 *.bak
 
+# ---------- 回收站 (软删除) ----------
+.trash/
+
 # ---------- IDE / 编辑器 ----------
 .vscode/
 .idea/
